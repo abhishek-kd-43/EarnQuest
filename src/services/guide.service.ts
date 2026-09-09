@@ -1,8 +1,7 @@
 import { db } from "@/lib/db";
 import { MockAIProvider } from "@/providers/ai/mock-ai.provider";
+import { GeminiAIProvider } from "@/providers/ai/gemini-ai.provider";
 import { PromptContext } from "@/providers/ai/ai.provider";
-
-const aiProvider = new MockAIProvider();
 
 export class GuideService {
   async chatWithGuide(params: {
@@ -16,14 +15,18 @@ export class GuideService {
     let stepTitle = "Exploring";
     let stepInstruction = "";
     let toolNames: string[] = [];
+    let userApiKey: string | null = null;
 
-    // 1. Fetch user hardware profile
+    // 1. Fetch user hardware profile and API keys
     const user = await db.user.findUnique({
       where: { id: params.userId },
-      include: { hardwareProfile: true },
+      include: { hardwareProfile: true, profile: true },
     });
     if (user?.hardwareProfile) {
       hardwareTier = user.hardwareProfile.tier;
+    }
+    if (user?.profile?.apiKeyGemini) {
+      userApiKey = user.profile.apiKeyGemini;
     }
 
     // 2. If mission provided, enrich context with active step and tool specs
@@ -59,10 +62,18 @@ export class GuideService {
       toolNames,
     };
 
-    const reply = await aiProvider.generateGuidance(params.userMessage, context);
+    // Determine provider: use Live Gemini if user key or server env key exists
+    const effectiveKey = userApiKey || process.env.GEMINI_API_KEY;
+    const provider = effectiveKey
+      ? new GeminiAIProvider(effectiveKey)
+      : new MockAIProvider();
+
+    const reply = await provider.generateGuidance(params.userMessage, context);
 
     return {
       reply,
+      isLiveAI: !!effectiveKey,
+      engineName: provider.name,
       contextUsed: {
         hardwareTier,
         missionTitle,
@@ -74,3 +85,4 @@ export class GuideService {
 }
 
 export const guideService = new GuideService();
+

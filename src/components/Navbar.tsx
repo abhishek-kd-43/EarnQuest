@@ -15,12 +15,16 @@ import {
   LogOut,
   User,
   Zap,
+  Key,
+  Radar,
+  Sparkles,
 } from "lucide-react";
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [keyStatus, setKeyStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,6 +35,11 @@ export function Navbar() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    fetch("/api/user/keys")
+      .then((res) => res.json())
+      .then((data) => setKeyStatus(data))
+      .catch(() => {});
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -42,10 +51,12 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/missions", label: "Missions", icon: Layers },
+    { href: "/keys-setup", label: "Free API Hub", icon: Key },
+    { href: "/research", label: "Daily Research", icon: Radar },
     { href: "/tools", label: "AI Tools", icon: Wrench },
     { href: "/opportunities", label: "Opportunities", icon: TrendingUp },
-    { href: "/how-it-works", label: "How It Works", icon: Compass },
   ];
+
 
   const authLinks = currentUser
     ? [
@@ -124,6 +135,24 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           {currentUser ? (
             <div className="flex items-center gap-3">
+              {/* AI Engine Status Badge */}
+              <Link
+                href="/keys-setup"
+                title={keyStatus?.engineSource || "Configure Free AI Keys"}
+                className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                  keyStatus?.isLiveActive
+                    ? "bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-900/60"
+                    : "bg-slate-900 border border-slate-700/60 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    keyStatus?.isLiveActive ? "bg-emerald-400 animate-pulse" : "bg-slate-500"
+                  }`}
+                />
+                {keyStatus?.isLiveActive ? "Gemini 1.5 Live" : "Free Keys"}
+              </Link>
+
               {/* Hardware Tier Badge */}
               <Link
                 href="/onboarding"
