@@ -1,0 +1,11 @@
+{
+  "project_name": "EarnQuest",
+  "project_code": "EQ",
+  "workflow": {
+    "granularity": "detailed",
+    "parallelization": false,
+    "discuss_mode": "discuss",
+    "research_before_questions": true
+  },
+  "runtime": "gemini"
+}
