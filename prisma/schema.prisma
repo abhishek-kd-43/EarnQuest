@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  passwordHash  String
+  role          String          @default("USER") // USER, VERIFIER, ADMIN
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  profile             UserProfile?
+  hardwareProfile     HardwareProfile?
+  userMissions        UserMission[]
+  projects            Project[]
+  ledgerEntries       LedgerEntry[]
+  earningVerifications EarningVerification[]
+  userAchievements    UserAchievement[]
+  auditLogs           AuditLog[]
+}
+
+model UserProfile {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  country     String    @default("Global")
+  language    String    @default("en")
+  currency    String    @default("USD")
+  xp          Int       @default(0)
+  level       Int       @default(1)
+  bio         String?
+  streakDays  Int       @default(0)
+  lastActiveAt DateTime @default(now())
+}
+
+model HardwareProfile {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  os            String    // Windows, macOS, Linux, ChromeOS, Unknown
+  browser       String    // Chrome, Firefox, Safari, Edge, Other
+  cpuCores      Int?
+  ramGb         Int?      // Voluntary or estimated RAM
+  hasGpu        Boolean   @default(false)
+  gpuRenderer   String?
+  tier          String    @default("TIER_1_LITE") // TIER_1_LITE, TIER_2_STANDARD, TIER_3_POWER
+  rawUserAgent  String?
+  verifiedAt    DateTime  @default(now())
+}
+
+model AITool {
+  id                String      @id @default(uuid())
+  slug              String      @unique
+  name              String
+  officialUrl       String
+  description       String
+  category          String      // Text, Image, Video, Audio, Coding, Web, Automation, Marketing
+  freePlanType      String      // FREE, FREEMIUM, OPEN_SOURCE, FREE_SELF_HOSTED, FREE_WITH_LIMITS, FREE_TRIAL
+  limitations       String?
+  commercialUse     String?     // Allowed, Restricted, Prohibited, Requires Attribution
+  license           String?
+  osSupport         String?     // Windows, Mac, Linux, Web
+  isLocal           Boolean     @default(false)
+  apiAvailable      Boolean     @default(false)
+  confidenceScore   Int         @default(90) // 0-100
+  lastVerifiedAt    DateTime    @default(now())
+  createdAt         DateTime    @default(now())
+
+  sources           AIToolSource[]
+  verifications     AIToolVerification[]
+  missionTools      MissionTool[]
+}
+
+model AIToolSource {
+  id              String    @id @default(uuid())
+  toolId          String
+  tool            AITool    @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  url             String
+  sourceName      String
+  reliabilityTier Int       @default(1) // 1 (Official), 2 (Package Registry), 3 (Industry), 4 (Blog)
+  retrievedAt     DateTime  @default(now())
+  citationSnippet String?
+}
+
+model AIToolVerification {
+  id          String    @id @default(uuid())
+  toolId      String
+  tool        AITool    @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  verifiedBy  String
+  status      String    @default("VERIFIED") // VERIFIED, NEEDS_CHECK, OUTDATED
+  notes       String?
+  verifiedAt  DateTime  @default(now())
+}
+
+model Opportunity {
+  id                      String      @id @default(uuid())
+  slug                    String      @unique
+  title                   String
+  description             String
+  category                String      // BUILD, CREATE, FREELANCE, AUTOMATE, CONTENT, ECOMMERCE, MARKETING, MONETIZATION
+  targetMarket            String
+  customerProblem         String
+  estimatedHoursMin       Int         @default(2)
+  estimatedHoursMax       Int         @default(10)
+  difficulty              String      @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  potentialRevenueMinCents Int        @default(1000) // in cents
+  potentialRevenueMaxCents Int        @default(100000) // in cents
+  revenueModel            String      // SERVICE_FEE, DIGITAL_PRODUCT, FREELANCE_PROJECT, MICRO_SAAS
+  status                  String      @default("ACTIVE") // ACTIVE, REQUIRES_REVIEW, ARCHIVED
+  opportunityScore        Int         @default(80) // 0-100
+  riskScore               Int         @default(20) // 0-100
+  confidenceScore         Int         @default(85) // 0-100
+  createdAt               DateTime    @default(now())
+
+  sources                 OpportunitySource[]
+  scores                  OpportunityScore[]
+  missions                Mission[]
+}
+
+model OpportunitySource {
+  id            String      @id @default(uuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  url           String
+  title         String
+  notes         String?
+  retrievedAt   DateTime    @default(now())
+}
+
+model OpportunityScore {
+  id                    String      @id @default(uuid())
+  opportunityId         String
+  opportunity           Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  beginnerFriendliness  Int         @default(80)
+  marketDemand          Int         @default(75)
+  freeToolAvailability  Int         @default(90)
+  monetizationClarity   Int         @default(80)
+  scalability           Int         @default(70)
+  platformRisk          Int         @default(20)
+  legalRisk             Int         @default(10)
+  calculatedAt          DateTime    @default(now())
+}
+
+model Mission {
+  id                    String          @id @default(uuid())
+  slug                  String          @unique
+  opportunityId         String?
+  opportunity           Opportunity?    @relation(fields: [opportunityId], references: [id])
+  title                 String
+  tagLine               String
+  description           String
+  category              String          // BUILD, CREATE, FREELANCE, AUTOMATE, CONTENT, ECOMMERCE, MARKETING, MONETIZATION
+  difficulty            String          @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  estimatedTime         String          @default("2-4 hours")
+  hardwareTier          String          @default("TIER_1_LITE") // TIER_1_LITE, TIER_2_STANDARD, TIER_3_POWER
+  whyThisExists         String
+  whatYouWillBuild      String
+  potentialMonetization String
+  riskNotes             String?
+  currentVersion        String          @default("1.0.0")
+  isPublished           Boolean         @default(true)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  steps                 MissionStep[]
+  tools                 MissionTool[]
+  userMissions          UserMission[]
+  versions              MissionVersion[]
+}
+
+model MissionVersion {
+  id          String    @id @default(uuid())
+  missionId   String
+  mission     Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  version     String
+  changeLog   String
+  isCurrent   Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+}
+
+model MissionStep {
+  id                  String    @id @default(uuid())
+  missionId           String
+  mission             Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  stepNumber          Int
+  title               String
+  objective           String
+  instruction         String
+  promptTemplate      String?
+  expectedOutput      String?
+  troubleshooting     String?
+  isBeginnerEssential Boolean   @default(true)
+
+  @@unique([missionId, stepNumber])
+}
+
+model MissionTool {
+  id            String    @id @default(uuid())
+  missionId     String
+  mission       Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  toolId        String
+  tool          AITool    @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  isRequired    Boolean   @default(true)
+  roleInMission String    // Primary creation, editing, deployment, etc.
+
+  @@unique([missionId, toolId])
+}
+
+model UserMission {
+  id                String                @id @default(uuid())
+  userId            String
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId         String
+  mission           Mission               @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  status            String                @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, ABANDONED
+  currentStep       Int                   @default(1)
+  startedAt         DateTime              @default(now())
+  completedAt       DateTime?
+  lastInteractedAt  DateTime              @default(now())
+
+  progress          UserMissionProgress[]
+  projects          Project[]
+
+  @@unique([userId, missionId])
+}
+
+model UserMissionProgress {
+  id            String      @id @default(uuid())
+  userMissionId String
+  userMission   UserMission @relation(fields: [userMissionId], references: [id], onDelete: Cascade)
+  stepNumber    Int
+  isCompleted   Boolean     @default(false)
+  completedAt   DateTime?
+  userNotes     String?
+
+  @@unique([userMissionId, stepNumber])
+}
+
+model Project {
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userMissionId   String?
+  userMission     UserMission?    @relation(fields: [userMissionId], references: [id])
+  title           String
+  description     String?
+  status          String          @default("IN_PROGRESS") // PLANNING, IN_PROGRESS, TESTING, PUBLISHED, MONETIZED
+  notes           String?
+  liveUrl         String?
+  repositoryUrl   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  files           ProjectFile[]
+  verifications   EarningVerification[]
+}
+
+model ProjectFile {
+  id            String    @id @default(uuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fileName      String
+  fileUrl       String
+  fileSizeBytes Int
+  mimeType      String
+  uploadedAt    DateTime  @default(now())
+}
+
+model LedgerEntry {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId   String?
+  type            String    // CREDIT_SALE_GROSS, DEBIT_PLATFORM_FEE, CREDIT_USER_EARNING, DEBIT_PAYOUT, REFUND_CHARGE
+  amountInCents   Int       // Integer minor currency units
+  currency        String    @default("USD")
+  status          String    @default("SETTLED") // PENDING, AVAILABLE, SETTLED
+  notes           String?
+  createdAt       DateTime  @default(now())
+}
+
+model EarningVerification {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?  @relation(fields: [projectId], references: [id])
+  amountInCents   Int       // Integer minor units
+  currency        String    @default("USD")
+  platformName    String    // Upwork, Fiverr, Gumroad, Direct Client, Stripe, etc.
+  sourceUrl       String?
+  evidenceFileUrl String?
+  status          String    @default("SUBMITTED") // UNVERIFIED, SUBMITTED, UNDER_REVIEW, VERIFIED, REJECTED
+  reviewerNotes   String?
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+}
+
+model Achievement {
+  id            String            @id @default(uuid())
+  slug          String            @unique
+  title         String
+  description   String
+  badgeIcon     String
+  xpReward      Int               @default(100)
+  requiredTier  String?           // EXPLORER, CREATOR, BUILDER, ENTREPRENEUR
+
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  actorId     String?
+  actor       User?     @relation(fields: [actorId], references: [id])
+  action      String    // USER_REGISTER, HARDWARE_ONBOARD, MISSION_START, EARNING_VERIFIED, etc.
+  targetType  String?
+  targetId    String?
+  details     String?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+}
