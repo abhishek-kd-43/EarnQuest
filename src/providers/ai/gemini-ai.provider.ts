@@ -44,6 +44,7 @@ Always follow these rules:
         headers: {
           "Content-Type": "application/json",
         },
+        signal: AbortSignal.timeout(3000),
         body: JSON.stringify({
           contents: [
             {

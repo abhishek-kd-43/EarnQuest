@@ -21,6 +21,7 @@ model User {
   projects            Project[]
   ledgerEntries       LedgerEntry[]
   earningVerifications EarningVerification[]
+  payoutRequests      PayoutRequest[]
   userAchievements    UserAchievement[]
   auditLogs           AuditLog[]
 }
@@ -40,6 +41,8 @@ model UserProfile {
   apiKeyGemini String?
   apiKeyGroq   String?
   apiKeyOpenRouter String?
+  stripeAccountId String?
+  stripeAccountStatus String @default("NOT_CONNECTED") // NOT_CONNECTED, PENDING, ACTIVE
   lastActiveAt DateTime @default(now())
 }
 
@@ -64,7 +67,7 @@ model AITool {
   name              String
   officialUrl       String
   description       String
-  category          String      // Text, Image, Video, Audio, Coding, Web, Automation, Marketing
+  category          String      // Text, Image, Video, Audio, Coding, Web, Automation, Marketing, Design, Research, Productivity, Agents
   freePlanType      String      // FREE, FREEMIUM, OPEN_SOURCE, FREE_SELF_HOSTED, FREE_WITH_LIMITS, FREE_TRIAL
   limitations       String?
   commercialUse     String?     // Allowed, Restricted, Prohibited, Requires Attribution
@@ -72,6 +75,10 @@ model AITool {
   osSupport         String?     // Windows, Mac, Linux, Web
   isLocal           Boolean     @default(false)
   apiAvailable      Boolean     @default(false)
+  requiresSignup    Boolean     @default(true)
+  requiresCreditCard Boolean    @default(false)
+  bestFor           String?     // Short description of what this tool is best for
+  workCategories    String?     // JSON array: ["Writing","Design","Coding"] — work types this tool enables
   confidenceScore   Int         @default(90) // 0-100
   lastVerifiedAt    DateTime    @default(now())
   createdAt         DateTime    @default(now())
@@ -120,12 +127,25 @@ model Opportunity {
   opportunityScore        Int         @default(80) // 0-100
   riskScore               Int         @default(20) // 0-100
   confidenceScore         Int         @default(85) // 0-100
+
+  // Verification & Source Transparency
+  verificationStatus      String      @default("UNVERIFIED") // VERIFIED, RECENTLY_CHECKED, NEEDS_REVIEW, UNVERIFIED, EXPIRED
+  sourceUrl               String?     // Original source URL for this opportunity
+  providerName            String?     // Platform name: Upwork, Fiverr, Gumroad, etc.
+  lastVerifiedAt          DateTime    @default(now())
+
+  // Filtering & Matching
+  remote                  Boolean     @default(true)
+  beginnerFriendly        Boolean     @default(true)
+  aiAssistanceLevel       String      @default("PARTIAL") // FULL, PARTIAL, MINIMAL — how much AI can help
+
   createdAt               DateTime    @default(now())
 
   sources                 OpportunitySource[]
   scores                  OpportunityScore[]
   missions                Mission[]
 }
+
 
 model OpportunitySource {
   id            String      @id @default(uuid())
@@ -258,6 +278,8 @@ model Project {
   notes           String?
   liveUrl         String?
   repositoryUrl   String?
+  priceInCents    Int             @default(0) // Integer minor units (cents)
+  isForSale       Boolean         @default(false)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -363,5 +385,56 @@ model ResearchItem {
   confidence     Int          @default(90)
   potentialValue String?
   createdAt      DateTime     @default(now())
+}
+
+model PayoutRequest {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountInCents Int       // Integer minor currency units
+  currency      String    @default("USD")
+  method        String    @default("STRIPE_CONNECT") // STRIPE_CONNECT, BANK_TRANSFER, MANUAL
+  destinationId String?   // Stripe Account ID or external bank identifier
+  status        String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  referenceId   String?   // Stripe transfer ID or payout ID
+  notes         String?
+  requestedAt   DateTime  @default(now())
+  processedAt   DateTime?
+}
+
+model DailyTask {
+  id                     String    @id @default(uuid())
+  title                  String
+  slug                   String    @unique
+  category               String    // WRITING, DESIGN, AUDIO, CODING, DATA, MARKETING, VIRTUAL_ASSISTANT
+  description            String
+  deliverable            String
+  sourcePlatform         String    // Upwork, Freelancer, RemoteOK, Remotive, Reddit, Direct Client
+  sourceUrl              String?
+  budgetInCents          Int       // Integer minor units (e.g. 4500 = $45.00)
+  platformFeeCents       Int       // 20% platform fee in integer cents
+  netPayoutCents         Int       // 80% user net payout in integer cents
+  estimatedMinutes       Int       @default(30)
+  difficulty             String    @default("ZERO_SKILL") // ZERO_SKILL, BEGINNER, INTERMEDIATE
+  hardwareTier           String    @default("TIER_1_LITE") // TIER_1_LITE, TIER_2_STANDARD, TIER_3_POWER
+  
+  // AI Execution Recipe
+  recommendedToolName    String
+  recommendedToolUrl     String
+  aiPromptTemplate       String
+  stepByStepGuide        String
+  clientProposalTemplate String
+  
+  status                 String    @default("OPEN") // OPEN, CLAIMED, COMPLETED, EXPIRED
+  isFeatured             Boolean   @default(false)
+  postedAt               DateTime  @default(now())
+  expiresAt              DateTime
+  createdAt              DateTime  @default(now())
+  claimedByUserId        String?
+
+  @@index([category])
+  @@index([status])
+  @@index([difficulty])
+  @@index([postedAt])
 }
 

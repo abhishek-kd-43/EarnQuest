@@ -40,7 +40,8 @@ export default async function MissionsCatalogPage() {
           return (
             <div
               key={m.id}
-              className="glass-panel glass-panel-hover p-6 rounded-2xl flex flex-col justify-between space-y-6"
+              className="glass-panel glass-panel-hover p-6 rounded-2xl flex flex-col justify-between space-y-6 animate-fade-in-up"
+              style={{ animationDelay: `${(missions.indexOf(m)) * 80}ms` }}
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-xs">
@@ -56,7 +57,7 @@ export default async function MissionsCatalogPage() {
                   {m.title}
                 </h3>
 
-                <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed">
+                <p className="text-sm text-slate-300 line-clamp-3 leading-relaxed">
                   {m.description}
                 </p>
 
@@ -99,7 +100,7 @@ export default async function MissionsCatalogPage() {
 
                 <Link
                   href={`/missions/${m.slug}`}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1"
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1"
                 >
                   Start Mission <ArrowRight className="h-3.5 w-3.5 stroke-[3]" />
                 </Link>

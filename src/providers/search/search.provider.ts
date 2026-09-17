@@ -1,3 +1,5 @@
+import { LiveSearchProvider } from "./live-search.provider";
+
 export interface SearchResultItem {
   title: string;
   url: string;
@@ -52,4 +54,17 @@ export class MockSearchProvider implements SearchProvider {
       },
     ];
   }
+}
+
+/**
+ * Factory to retrieve the active SearchProvider.
+ * If BRAVE_SEARCH_API_KEY is configured in environment, utilizes live Brave Search.
+ * Otherwise uses LiveSearchProvider with verified open repository live feed.
+ */
+export function getSearchProvider(): SearchProvider {
+  const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+  if (braveKey && braveKey.trim().length > 0) {
+    return new LiveSearchProvider(braveKey.trim());
+  }
+  return new LiveSearchProvider();
 }

@@ -29,9 +29,11 @@ describe("GeminiAIProvider Integration & Fallback", () => {
     expect(shortResult.message).toContain("too short");
   });
 
-  it("handles network failure gracefully and falls back to offline guidance", async () => {
-    // Provide an invalid key that triggers fallback
-    const provider = new GeminiAIProvider("AIzaSyFakeKeyForTestingPurposes12345");
+  it(
+    "handles network failure gracefully and falls back to offline guidance",
+    async () => {
+      // Provide an invalid key that triggers fallback
+      const provider = new GeminiAIProvider("AIzaSyFakeKeyForTestingPurposes12345");
 
     const response = await provider.generateGuidance("Explain this simply", {
       missionTitle: "Groq Whisper Pipeline",
@@ -45,5 +47,5 @@ describe("GeminiAIProvider Integration & Fallback", () => {
     // It should have either executed or gracefully fallen back with offline notice
     expect(typeof response).toBe("string");
     expect(response.length).toBeGreaterThan(20);
-  });
+  }, 10000);
 });

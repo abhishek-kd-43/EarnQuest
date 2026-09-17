@@ -181,6 +181,87 @@ export class LedgerService {
 
     return updated;
   }
+
+  /**
+   * Requests a payout from available balance with integer minor math verification.
+   */
+  async requestPayout(params: {
+    userId: string;
+    amountInCents: number;
+    method?: string;
+    destinationId?: string;
+    notes?: string;
+  }) {
+    if (params.amountInCents <= 0) {
+      throw new Error("Payout amount must be greater than zero");
+    }
+
+    return db.$transaction(async (tx) => {
+      // 1. Check current available balance
+      const entries = await tx.ledgerEntry.findMany({
+        where: { userId: params.userId },
+      });
+
+      let availableInCents = 0;
+      for (const entry of entries) {
+        if (
+          entry.type === "CREDIT_USER_EARNING" &&
+          (entry.status === "AVAILABLE" || entry.status === "SETTLED")
+        ) {
+          availableInCents += entry.amountInCents;
+        } else if (entry.type === "DEBIT_PAYOUT") {
+          availableInCents -= entry.amountInCents;
+        }
+      }
+
+      if (params.amountInCents > availableInCents) {
+        throw new Error(
+          `Insufficient available balance. Requested: ${params.amountInCents} cents, Available: ${availableInCents} cents`
+        );
+      }
+
+      // 2. Create PayoutRequest record
+      const payout = await tx.payoutRequest.create({
+        data: {
+          userId: params.userId,
+          amountInCents: params.amountInCents,
+          method: params.method || "STRIPE_CONNECT",
+          destinationId: params.destinationId,
+          status: "PENDING",
+          notes: params.notes,
+        },
+      });
+
+      // 3. Create DEBIT_PAYOUT ledger entry
+      const ledgerEntry = await tx.ledgerEntry.create({
+        data: {
+          userId: params.userId,
+          transactionId: payout.id,
+          type: "DEBIT_PAYOUT",
+          amountInCents: params.amountInCents,
+          currency: "USD",
+          status: "SETTLED",
+          notes: `Payout request #${payout.id.substring(0, 8)} (${params.method || "Stripe Connect"})`,
+        },
+      });
+
+      return {
+        payout,
+        ledgerEntry,
+        remainingBalanceInCents: availableInCents - params.amountInCents,
+      };
+    });
+  }
+
+  /**
+   * Retrieves payout requests for a user.
+   */
+  async getPayoutHistory(userId: string) {
+    return db.payoutRequest.findMany({
+      where: { userId },
+      orderBy: { requestedAt: "desc" },
+    });
+  }
 }
 
 export const ledgerService = new LedgerService();
