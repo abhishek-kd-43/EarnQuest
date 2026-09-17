@@ -59,6 +59,7 @@ export function Navbar() {
   };
 
   const navLinks = [
+    { href: "/tasks", label: "Daily Tasks", icon: Zap },
     { href: "/opportunities", label: "Find Work", icon: TrendingUp },
     { href: "/missions", label: "Missions", icon: Layers },
     { href: "/tools", label: "AI Tools", icon: Wrench },
